@@ -455,10 +455,153 @@
 		\begin{figure}
 			\includegraphics[width=25em]{figures/DCGAN-visualizing-internals-vector-2.PNG}
 		\end{figure}
+		\begin{figure}
+			\includegraphics[width=25em]{figures/DCGAN-visualizing-internals-vector-3.PNG}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{Investigating and Visualizing the Internals of the Networks}
+		\begin{figure}
+			\includegraphics[width=25em]{figures/DCGAN-visualizing-internals-vector-4.PNG}
+			\caption{A "turn" vector was created from four averaged samples of faces looking left vs looking right. By adding interpolations along this axis to random samples.}
+		\end{figure}
 	\end{frame}
 
 	
 	\part{LAPGAN}
+	\begin{frame}{Outline}
+		\begin{figure}
+			\includegraphics[width=25em]{figures/outline.png}
+		\end{figure}
+	\end{frame}
+	\subtitlepage{}{Deep Generative Image Models using a Laplacian Pyramid of Adversarial Networks}{Emily Denton, Soumith Chintala, Arthur Szlam, Rob Fergus\\NIPS 2015\\arXiv: 1506.05751}
+	
+	\begin{frame}{Introduction}
+		\begin{itemize}
+			\item Building a good generative model of natural images has been a fundamental problem.
+			\item However, images are complex and high dimensional, making them hard to model well.
+			\item For the generation of high-resolution image, most existing approaches modelling entire scene instead generate image patches.
+			\item Multi-scale structure of natural images, building a series of generative models.
+			\item Each captures image structure at a particular scale of a Laplacian pyramid.
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Laplacian Pyramid}
+		\begin{itemize}
+			\item The main idea of Laplacian Pyramid is to consider the residue of the "image" and the "size-recovered down-sampled image".
+			\item If I is a $j\times j$ image.
+			\item Define $d(.)$ is down sampling. $d(I)$ will be a $j/2\times j/2$ image.
+			\item Define $u(,)$ is up sampling. $u(I)$ will be a $2j\times 2j$ image.
+			\item First build a Gaussian pyramid $\mathcal{G}(I)=[I_0,I_1,\dots,I_K]$.
+			\item $I_0=I$ and $I_k$ is $k$ repeated applications of $d(,)$. e.g. $I_2=d(d(I))$. $K$ is the number of levels in the pyramid.
+			\item The coefficient $h_k$ at each level $k$ of the Laplacian pyramid $\mathcal{L}(I)$ are constructed by taking the difference between adjacent levels in the Gaussian pyramid:
+			$$
+			h_k=\mathcal{L}_k(I)=\mathcal{G}_k(I)-u(\mathcal{G}_{k+1}(I))=I_k-u(I_{k+1})
+			$$
+			\item If we obtain, we can reconstruct the image from $I_K$ to $I_0$ by:
+			$$
+			I_k=u(I_{k+1})+h_k
+			$$
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Laplacian Generative Adversarial Networks (LAPGAN)}
+		\begin{itemize}
+			\item LAPGAN followed these ideas by training a series of generators to build coefficients $\tilde{h}_k$ at each scale.
+			\item We can "draw" a high-resolution image by these coefficients by:
+			$$
+			\tilde{I}_k=u(\tilde{I}_{k+1})+\tilde{h}_k=u(\tilde{I}_{k+1})+G_k(z_k,u(\tilde{I}_{k+1}))
+			$$
+			\item The generative models ${G_0,\dots,G_k}$ are trained using the CGAN with the condition $u(\tilde{I}_{k+1})$ at each level of the pyramid.
+			\begin{figure}
+				\includegraphics[width=30em]{figures/LAPGAN-generator-structure.png}
+				\caption{The structure of the generator of LAPGAN}
+			\end{figure}
+			\item We will be able to calculate $\tilde{h}_k=G_k(z_k,u(I_{k+1}))$ and generate the high-solution realistic image if we have these GANs.
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Laplacian Generative Adversarial Networks (LAPGAN)}
+		\begin{itemize}
+			\item So, how do we get these GANs? (Training approach)
+			\begin{figure}
+				\includegraphics[width=25em]{figures/LAPGAN-general-structure.PNG}
+				%\caption{The training procedure for LAPGAN model}
+			\end{figure}
+			\item The training start with a $64\times64$ input image $I$ from trining set:
+			\begin{enumerate}
+				\item take $I_0=I$ and down-sample it by a factor of two to produce $I_1$.
+				\item up-sample $I_1$ by a factor of two, giving a low-pass version $l_0$ of $I_0$.
+				%\item with equal probability we use $l_0$ to create \emph{either} a real \emph{or} a generated example for the discriminative model $D_0$ that computes the probability of it being real vs generated.
+				\item In the real case (blue arrows), we compute high-pass $h_0=I_0-l_0$.
+				\item In the generated case (megenta arrows), the generative network $G_0$ receives as input a random noise vector $z_0$ and $l_0$. It outputs a generated high-pass image $\tilde{h}_0=G_0(z_0,l_0)$.
+				\item In both the real/generated cases, $D_0$ also receives $l_0$ as condition.
+				\item At level 3, $I_3$ is an $8\times8$ image, simple enough to be modeled directly with a standard GANs $G_3$ and $D_3$
+			\end{enumerate}
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Laplacian Generative Adversarial Networks (LAPGAN)}
+		\begin{itemize}
+			\item The key idea in this work is breaking the generation into successive refinements.
+			\item Give up any "global" manipulation.
+			\item Never make any attempt to train a network to discriminate between the output of a cascade and a real image and instead focus on making each step plausible.
+			\item Furthermore, the independent training of each pyramid level has the advantage that it is far more difficult for the model to memorize training examples --- a hazard when high capacity deep networks are used. (over-fit in generative model).
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Experiment}
+		\begin{figure}
+			\includegraphics[width=30em]{figures/LAPGAN-experiment.png}
+			\caption{STL 10 Samples: \\(a) Random $96\times96$ samples from our LAPGAN model. \\(b) Coarse-to-fine generation chain.}
+		\end{figure}
+	\end{frame}
+	
+	\part{GAN for Image Synthesis}
+	\begin{frame}{Outline}
+		\begin{figure}
+			\includegraphics[width=25em]{figures/outline.png}
+		\end{figure}
+	\end{frame}
+	\subtitlepage{}{Generative Adversarial Text to Image Synthesis}{Scott Reed, Zeynep Akata, Xinchen Yan, Lajanugen Logeswaran, Bernt Schiele, Honglak Lee\\ICML2016+JMLR Vol.48\\arXiv: 1605.05396}
+	
+	\begin{frame}{Introduction}
+		\begin{itemize}
+			\item Papers we mentioned earlier are all about "generate realistic images".
+			\item Can we translat text in the form of single-sentence human-written descriptions directly into image pixels?
+		\end{itemize}
+		\begin{figure}
+			\includegraphics[width=17em]{figures/image-synthesis-prelude-demo.png}
+		\end{figure}
+	\end{frame}
+
+	\begin{frame}{Introduction}
+		\begin{itemize}
+			\item This work aims to learn a mapping directly from words and characters to image pixels.
+			\item To solve this challenging problem requires solving two sub problems:
+			\begin{enumerate}
+				\item learn a text feature representation that captures the important visual details
+				\item use these features to synthesize a compelling image that a human might mistake for real.
+			\end{enumerate}
+			\item Fortunately, deep learning has enabled enormous progress in both sub problems - natural language representation and image synthesis.
+			\item Current task will be build on these previous works.
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Method}
+		\begin{itemize}
+			\item Approach is to train a deep convolutional generative adversarial network (DCGAN) conditioned on text features encoded by a hybird character-level convolutional-recurrent neural network.
+			\item Both the generator network $G$ and the discriminator network $D$ perform feed-forward inference conditioned on the text feature.
+			\item The generator network is denoted $G$: $\mathrm{R}^Z\times\mathrm{R}^T\rightarrow\mathrm{R}^D$.
+			\item The discriminator as $D$: $\mathrm{R}^D\times\mathring{R}^T\rightarrow{0,1}$.
+			\item $T$ is the dimension of the text description embedding, $D$ is the dimension of the image, and $Z$ is the dimension of the noise input to $G$.
+		\end{itemize}
+		\begin{figure}
+			\includegraphics[width=30em]{figures/image-synthesis-structure.png}
+		\end{figure}
+	\end{frame}
+	
+	
 	\part{Challenge On NLP}
 	\part{Background: Reinforcement Learning and Policy Gradient}
 	\part{SeqGAN}
