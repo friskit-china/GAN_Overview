@@ -593,14 +593,96 @@
 			\item Approach is to train a deep convolutional generative adversarial network (DCGAN) conditioned on text features encoded by a hybird character-level convolutional-recurrent neural network.
 			\item Both the generator network $G$ and the discriminator network $D$ perform feed-forward inference conditioned on the text feature.
 			\item The generator network is denoted $G$: $\mathrm{R}^Z\times\mathrm{R}^T\rightarrow\mathrm{R}^D$.
-			\item The discriminator as $D$: $\mathrm{R}^D\times\mathring{R}^T\rightarrow{0,1}$.
+			\item The discriminator as $D$: $\mathrm{R}^D\times\mathrm{R}^T\rightarrow{0,1}$.
 			\item $T$ is the dimension of the text description embedding, $D$ is the dimension of the image, and $Z$ is the dimension of the noise input to $G$.
 		\end{itemize}
 		\begin{figure}
 			\includegraphics[width=30em]{figures/image-synthesis-structure.png}
 		\end{figure}
 	\end{frame}
+
+	\begin{frame}[t]{Method}
+		\begin{figure}
+			\includegraphics[width=30em]{figures/image-synthesis-structure.png}
+		\end{figure}
+		\begin{itemize}
+			\item in the generator $G$, sample from the noise prior $z\in\mathrm{R}^Z\sim\mathcal{N}(0,1)$
+			\item encode the text query $t$ using text encoder $\phi$.
+			\item the description embedding $\phi(t)$ is first compressed using a fully-connected layer to a small dimension followed by leaky-ReLU and then concatenated to the noise vector $z$.
+			\item inference proceeds as in a normal deconvolutional network: feed-forward it through the generator $G$; a synthetic image $\hat{x}$ is generated via $\hat{x}\leftarrow G(z,\phi(t))$.
+		\end{itemize} 
+	\end{frame}
+
+	\begin{frame}[t]{Method}
+		\begin{figure}
+			\includegraphics[width=30em]{figures/image-synthesis-structure.png}
+		\end{figure}
+		\begin{itemize}
+			\item in the discriminator $D$, perform several layers of stride-2 convolution with spatial batch normalization followed by leaky ReLU.
+			\item replicate the description embedding spatially and perform a depth concatenation.
+			\item perform a $1\times1$ convolution followed by rectification and a $4\times4$ convolution to conpute the final score from $D$.
+			\item batch normalization is performed on all convolutional layers.
+		\end{itemize}
+	\end{frame}
 	
+	\begin{frame}{Training: GAN-CLS}
+		\begin{itemize}
+			\item The most straightforward way to train a conditional GAN is to view (text, image) pairs as joint observation and train the discriminator to judge pairs as real or fake.
+			\item The discriminator has no explicit notion of whether real training images match the text embedding context.
+			\item The dynamics of learning may be different from the non-conditional case.
+			\item In naive GAN, the discriminator observes two kinds of inputs: real images with matching text, and synthetic images with arbitrary text.
+			\item It must implicitly separate two sources of error:
+			\begin{enumerate}
+				\item unrealistic images (for \emph{any} text)
+				\item realistic images of the wrong class that mismatch the conditioning information.
+			\end{enumerate}
+		\end{itemize} 
+	\end{frame}
+
+	\begin{frame}{Training: GAN-CLS}
+		\begin{itemize}
+			\item Algorithm following summarizes the training procedure.
+			\begin{algorithm}[H]
+				\algsetup{linenosize=\tiny}
+				%\scriptsize
+				\footnotesize
+				\caption{\footnotesize GAN-CLS training algorithm with step size $\alpha$, using minibatch SGD for simplicity.}
+				\begin{algorithmic}
+					\REQUIRE minibatch images $x$, matching text $t$, mismatching $\hat{t}$, number of training batch steps $S$
+					\FOR{$n=1,\dots,S$}
+						\STATE $h\leftarrow\phi(t)$ //encode matching text description
+						\STATE $\hat{h}\leftarrow\phi(\hat{t})$ //encode mis-matching text description
+						\STATE $z\sim\mathcal{N}(0,1)^Z$ //draw sample of random noise
+						\STATE $\hat{x}\leftarrow G(z,h)$ //forward through generator
+						\STATE $s_r\leftarrow D(x,h)$ // real image, right text
+						\STATE $s_w\leftarrow D(x,\hat{h})$ // real image, wrong text
+						\STATE $s_f\leftarrow D(\hat{x},h)$ // fake image, right text
+						\STATE $\mathcal{L}_D\leftarrow\log(s_r)+(\log(1-s_w)+log(1-s_f))/2$  
+						\STATE $D\leftarrow D-\alpha\partial\mathcal{L}_D/\partial D$ // update discriminator
+						\STATE $\mathcal{L}_G\leftarrow\log(s_f)$
+						\STATE $G\leftarrow G-\alpha\partial\mathcal{L}_G/\partial G$ // update generator
+					\ENDFOR
+				\end{algorithmic}
+			\end{algorithm}
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Training: GAN-INT}
+		\begin{itemize}
+			\item Sometimes, we can generate a large amount of additional text embeddings by simply interpolating between embeddings of training set.
+			\item These interpolated text embeddings need not correspond to any actual human-written text, so there is no additional labelling cost.
+			\item This can be viewed as adding an additional term to the generator objective to minimize:
+			$$
+			\mathrm{E}_{t_1,t_2\sim p_{\text{data}}}\left[\log(1-D(G(z,\beta t_1+(1-\beta)t_2)))\right]
+			$$
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Experiment}
+		\begin{figure}
+			\includegraphics[width=30em]{figures/image-synthesis-experiment.PNG}
+		\end{figure}
+	\end{frame}
 	
 	\part{Challenge On NLP}
 	\part{Background: Reinforcement Learning and Policy Gradient}
