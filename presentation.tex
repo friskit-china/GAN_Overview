@@ -684,8 +684,65 @@
 		\end{figure}
 	\end{frame}
 	
-	\part{Challenge On NLP}
-	\part{Background: Reinforcement Learning and Policy Gradient}
+	\part{Challenges of GANs on NLP}
+	\begin{frame}{Outline}
+		\begin{figure}
+			\includegraphics[width=25em]{figures/outline.png}
+		\end{figure}
+	\end{frame}
+	\subtitlepage{}{Challenges of GANs on NLP}{}
+	\begin{frame}{Challenges of GANs on NLP}
+		\begin{itemize}
+			\item GAN are only defined for real-valued data. (pixels of an image, energy of audio frame.)
+			\item You can make slight changes to the synthetic data only if it is based on continuous numbers. If it is based on discrete numbers, there is no way to make a slight change.
+			\item E.g. $\text{pixel}(1.0)\approx\text{pixel}(1.00001)$. $\text{one-hot}(\text{penguin})\neq\text{one-hot}(\text{penguin+0.001})$
+			\item GAN can only give the score/loss for an entire sequence when it has been generated.
+			\item For a partially generated sequence, it is non-trivial to balance how good as it is not and the future score as the entire sequence.
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Solution}
+		\begin{itemize}
+			\item Embedding? 
+			\begin{itemize}
+				\item space of embeddings (vector of size 300 on real values (float32)) is too large compared to the vocabulary. 
+				\item Small changes on the embedding vector almost always never leads to another word.
+			\end{itemize}
+			\item Reinforcement Learning? 
+			\begin{itemize}
+				\item Consider the sequence generation procedure as a sequential decision making process.
+				\item The generative model is treated as an agent of reinforcement learning.
+			\end{itemize}
+		\end{itemize}
+	\end{frame}
+	
+	%\part{Background: Reinforcement Learning and Policy Gradient}
 	\part{SeqGAN}
+	\subtitlepage{}{SeqGAN: Sequence Generative Adversarial Nets with Policy Gradient}{Lantao Yu, Weinan Zhang, Jun Wang, Yong Yu\\NIPS 2016\\arXiv: 1609.05473}
+	\begin{frame}{Introduction}
+		\begin{itemize}
+			\item this paper proposed a reinforcement learning based GAN framework to conduct sequence generation.
+			\item the state is the generated tokens so far.
+			\item the action is the next token to be generated.
+			\item this research employed a discriminator to evaluate the sequence and feedback the evaluation to guide the learning of the generative model.
+		\end{itemize}
+	\end{frame}
+
+	\begin{frame}{Structure}
+		\begin{figure}
+			\includegraphics[width=25em]{figures/SeqGAN-general-structure.png}
+		\end{figure}
+		\begin{itemize}
+			\item Left: $D$ is trained over the real data and the generated data by $G$.
+			\item Right: $G$ is trained by policy gradient where the final reward signal is provided by $D$ and is passed back to the intermediate action value via Monte Carlo search.
+		\end{itemize}
+	\end{frame}
+	
 	\part{Neural Dialogue Generation}
+	\subtitlepage{}{Adversarial Learning for Neural Dialogue Generation}{Jiwei Li, Will Monroe, Tianlin Shi, Alan Ritter and Dan Jurafsky\\arXiv: 1701.06547}
+	\begin{frame}{Introduction}
+		\item Open domain dialogue generation aims at generating meaningful and coherent dialogue responses given input dialogue history.
+		\item In this paper, authors discussed potential pitfalls of adversarial evaluations and necessary steps to avoid them and make evaluation reliable.
+		\item This approach produces more interactive, interesting and non-repetitive responses than standard SEQ2SEQ.
+	\end{frame}
 \end{document}
